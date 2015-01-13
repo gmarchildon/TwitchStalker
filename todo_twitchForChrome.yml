@@ -1,0 +1,47 @@
+## Twitch for Chrome ##
+
+- Notifications pop-up
+- Remake background code loop
+- Auto refresh @username list
+- Don't resfresh on open
+- Refresh button
+- Konami code -> PONEYS
+
+- Bugs
+    - Importation incomplet with @username
+    - Tooltip number doubled?
+    - Loading bar stay if an error happend
+    - Loading bar stay if @username found nothing new to add
+    
+- Fonctions
+    - Refresh
+        - Save online/offline list on local
+        - Remove auto refresh on launch
+        - Fetch and show the list saved in local
+        - Add button next to text input
+        - Refresh check online/offline stream and reimport @username list
+        - Refresh is done every 2 minutes (?) in eventPage.js
+    - Account linking
+        - Ask if the user want to link the account to the extension when importing
+        - Link save the name in local for refresh
+        - If an account is already linked, ask if he want to replace it
+        
+- localStorage
+    - accountLink : name
+    - channels
+        - name 1
+        - name 2
+        - name 3
+    - onlines
+        - name 1
+            - viewers
+            - game
+            - avatar
+        - name 1
+            - viewers
+            - game
+            - avatar
+    - offlines
+        - name 1
+        - name 2
+        - name 3

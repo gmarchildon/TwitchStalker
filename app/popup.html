@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Twitch for Chrome</title>
+		<link rel="stylesheet" href="style.css" type="text/css" />
+	</head>
+	<body>
+		<header>
+			<div id="logo"><a href="http://www.twitch.tv" class="link_block" target="_blank"></a></div>
+			<div id="loading"></div>
+		</header>
+		
+		<form name="new_channel" id="new_channel">
+			<input type="text" id="add_channel" placeholder="Add a channel. Type /help for more info." />
+			<button type="submit"></button>
+		</form>
+		
+		<h1>ONLINE CHANNELS</h1>
+		<div id="onlines"></div>
+		
+		<h1>OFFLINE CHANNELS</h1>
+		<div id="offlines"></div>
+		
+		<script type="text/javascript" src="popup.js"></script>
+	</body>
+</html>

@@ -1,0 +1,112 @@
+/* GENERAL */
+
+*{ margin: 0; padding: 0; }
+
+#twitch /* Body*/
+{
+    height: 500px; width: 300px;
+    background: #282828;
+    color: #aaa;
+    font-family: Arial;
+}
+
+.link_block
+{
+    height: 100%; width: 100%;
+    display: block;
+}
+
+
+/* HEADER */
+#logo
+{
+    height: 70px;
+    width: 160px;
+    margin: auto;
+    background: url("twitch_logo.png");
+}
+
+
+/* STREAMERS */
+
+h1
+{
+    font-size: 12px;
+    color: #666;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 5px 5px;
+    margin: 0;
+    border-bottom: 1px black solid;
+    border-top: 1px black solid;
+}
+
+.online
+{
+    background: #1E1E1E;
+    height: 70px; width: 100%;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.online img
+{
+    height: 50px; width: 50px;
+    margin : 0 10px 10px 10px;
+    position: absolute;
+    margin-top : 10px;
+}
+
+.online span
+{
+    margin : 10px 0 0 70px;
+    position: absolute;
+}
+
+.online a, .offline a
+{
+    text-decoration: none;
+    color: #aaa;
+}
+
+.online:hover, .offline:hover
+{
+    background: #6441A5;
+}
+
+.online a:hover, .offline a:hover
+{
+    color: white;
+}
+
+.offline
+{
+    background: #1E1E1E;
+    height: 30px; width: 100%;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    border-bottom: 1px black solid;
+}
+
+.offline span
+{
+    position: absolute;
+    margin: 8px 5px;
+}
+
+.no_online
+{
+    background: #1E1E1E;
+    height: 30px; width: 100%;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    border-bottom: 1px black solid;
+}
+
+.name
+{
+    font-size: 14px;
+}
+
+.info
+{
+    font-size: 11px;
+}
