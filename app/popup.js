@@ -13,23 +13,6 @@ var offline_channels = Array();
 for (var i in localStorage) channels.push(localStorage[i]);
 channels.sort;
 
-// If first time, create LocalStorage object
-if(!localStorage.twitchForChrome) {
-    old_ls = localStorage;
-    for (var i in localStorage) delete(localStorage[i]);
-    swag = {
-        "accountLink":"",
-        "channels":{},
-        "onlines":{},
-        "offlines":{}
-    }
-
-    console.log(old_ls)
-}
-
-console.log(localStorage);
-
-
 // Var of the loading bar
 var channel_count = 0;
 var channel_nbr = channels.length;
