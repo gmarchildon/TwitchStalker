@@ -4,18 +4,28 @@
 *
 * You can follow me on Twitter here : @jesuisunpixel
 * Or you can visit my website here : www.jesuisunpixel.com
+* You can found the source code here : github.com/je-suis-un-pixel/TwitchForChrome
 * */
 
-// Get channels list from LocalStorage
-var channels = Array();
-var online_channels = Array();
-var offline_channels = Array();
-for (var i in localStorage) channels.push(localStorage[i]);
-channels.sort;
+//for (var i in localStorage) channels.push(localStorage[i]);
+//channels.sort;
+
+// If first time, create localStorage object
+// Else parse localStorage
+if(!localStorage.twitchForChrome) {
+    for (var i in localStorage) delete(localStorage[i]);
+    swag = {
+        "accountLink":"",
+        "channels":[],
+        "onlines":{},
+        "offlines":[]
+    }
+    localStorage.twitchForChrome = JSON.stringify(swag);
+} else var storage = JSON.parse(localStorage.twitchForChrome);
 
 // Var of the loading bar
 var channel_count = 0;
-var channel_nbr = channels.length;
+var channel_nbr = storage.channels.length;
 
 // Misc var
 var online_channel = 0;
@@ -96,7 +106,7 @@ function streamer(channel) {
                     chrome.browserAction.setBadgeBackgroundColor({color:[100,65,165,255]});
                     chrome.browserAction.setBadgeText({text:online_channel.toString()});
 
-                    channels.forEach(function(element){
+                    storage.channels.forEach(function(element){
                         if(online_channels[element]) 
                             document.getElementById('onlines').appendChild(online_channels[element]);
                         else document.getElementById('offlines').appendChild(offline_channels[element]);
@@ -163,7 +173,7 @@ function run_query(evt) {
         xhr.onreadystatechange = function() {
             //If the download is finish, continue with the JSON file
             if (xhr.readyState == 4) {
-                if (this.status==404) {
+                if (this.status==404 || this.status==422) {
                     //alert("Error: "+this.status+" The channel "+query+" have not been found.");
                     console.log("Error "+this.status+": The channel "+query+" have not been found.");
                 } else if(this.status == 0) {
@@ -210,7 +220,7 @@ function addChannel(new_channels) {
     new_channels.forEach(function(element){
         if(!localStorage[element]) {
             localStorage[element] = element;
-            channels.push(element);
+            storage.channels.push(element);
             streamer(element);
         } else channel_nbr--;
     });
@@ -235,6 +245,11 @@ function deleteChannel(old_channels) {
     var count = document.getElementById('onlines').getElementsByTagName('div').length;
     chrome.browserAction.setBadgeBackgroundColor({color:[100,65,165,255]});
     chrome.browserAction.setBadgeText({text:count.toString()});
+}
+
+function saveStorage() {
+    localStorage.twitchForChrome = JSON.stringify(storage);
+    console.log("Storage has been save.");
 }
 
 // Launch the app when the HTML is loaded
