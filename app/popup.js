@@ -7,31 +7,87 @@
 * You can found the source code here : github.com/je-suis-un-pixel/TwitchForChrome
 * */
 
-//for (var i in localStorage) channels.push(localStorage[i]);
-//channels.sort;
+// Set a variable for make sure everything is ready for render
+var toFetch = 0;
+var fetched = 0;
 
 // If first time, create localStorage object
-// Else parse localStorage
 if(!localStorage.twitchForChrome) {
-    for (var i in localStorage) delete(localStorage[i]);
-    swag = {
+    wipeStorage();
+    // Save the stream from legacy then wipe localStorage
+    for (var i in localStorage) {
+        if('i' != 'twitchForChrome') {
+            addChannels([i]);
+            delete(localStorage[i]);
+        }
+    }
+    saveStorage();
+} else var storage = JSON.parse(localStorage.twitchForChrome);
+
+/**
+ * Save all the user data in localStorage in String.
+ */
+function saveStorage() {
+    localStorage.twitchForChrome = JSON.stringify(storage);
+    console.log("TwitchForChrome: Storage has been save.");
+}
+
+/**
+ * Add a list of new channels to the user's list.
+ * @param {array} newChannels - A list of channel's names.
+ */
+ function addChannels(newChannels) {
+    if(Array.isArray(newChannels)) {
+        newChannels.forEach(function(element) {
+            if(storage.channels.indexOf(element) == -1) storage.channels.push(element);
+        });
+    } else console.log("TwitchForChrome: ERROR - The [addChannels] function require an array.");
+ }
+
+
+/**
+ * Delete a list of channels from the user's list.
+ * @param {array} delChannels - A list of channel's names.
+ */
+ function deleteChannels(delChannels) {
+    if(Array.isArray(delChannels)) {
+        delChannels.forEach(function(element) {
+            channelIndex = storage.channels.indexOf(element);
+            if(channelIndex != -1) {
+                storage.channels.splice(channelIndex, 1);
+                resetChannel(element);
+            }
+        });
+    } else console.log("TwitchForChrome: ERROR - The [deleteChannels] function require an array.");
+}
+
+/**
+ * Remove the channel from onlines/offlines list to reset information.
+ * @param {string} channel - Name of the channel to reset.
+ */
+function resetChannel(channel) {
+    delete storage.onlines[channel];
+    restChannelIndex = storage.offlines.indexOf(channel);
+    if(restChannelIndex != -1) storage.offlines.splice(restChannelIndex, 1);
+}
+
+function wipeStorage() {
+    storage = {
         "accountLink":"",
         "channels":[],
         "onlines":{},
         "offlines":[]
-    }
-    localStorage.twitchForChrome = JSON.stringify(swag);
-} else var storage = JSON.parse(localStorage.twitchForChrome);
+    };
+}
 
-// Var of the loading bar
-var channel_count = 0;
-var channel_nbr = storage.channels.length;
+/**
+ * Get information of a channel from Twitch.
+ * @param {string} channel - The name of the channel to fetch.
+ */
+function getStream(channel, refreshing) {
+    // Remove the channel from the onlines or offlines list of storage
+    resetChannel(channel);
 
-// Misc var
-var online_channel = 0;
-var error = false;
-
-function streamer(channel) {  
     // Download JSON file of the stream
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "https://api.twitch.tv/kraken/streams/"+channel, true);
@@ -40,224 +96,127 @@ function streamer(channel) {
         // If the download is finish, continue with the JSON file
         if (xhr.readyState == 4) {
             if (this.status == 404) {
-                //alert("Error: "+this.status+" The channel "+channel+" have not been found.");
-                console.log("Error "+this.status+": The channel "+channel+" have not been found.");
-                delete localStorage[channel];
-                channel_nbr--;
+                console.log("TwitchForChrome: ERROR "+this.status+" - The channel "+channel+" have not been found.");
+                deleteChannels([channel]);
             } else if(this.status == 0) {
-                if(!error) {
-                    //alert("Error "+this.status+": It seem you don't have an internet connection.");
-                    console.log("Error "+this.status+": It seem you don't have an internet connection.");
-                    error = true;
-                }
+                console.log("TwitchForChrome: ERROR "+this.status+" - It seem you don't have an internet connection.");
             } else if(this.status == 200) {
                 var json = JSON.parse(xhr.responseText);
 
-                // If the Stream is Online
+                // If the channel is Online
                 if (json.stream != null) {
-                    online_channel++;
                     if (json.stream.game == null) json.stream.game = "Game unknown";
                     if (json.stream.channel.logo == null) json.stream.channel.logo = "404_user_50x50.png";
-
-                    var div = document.createElement("div");
-                    div.className = "online";
-                    div.innerHTML = '<form name="remove_'+channel+'"><button type="submit">x</button></form>'+
-                    '<a href="http://www.twitch.tv/'+channel+'" class="link_block" target="_blank" />'+
-                    '<img src="'+json.stream.channel.logo+'" width="50" height="50" />'+
-                    '<span class="name">'+channel+'</span><br/>'+
-                    '<span class="info">'+json.stream.game+'</span><br/>'+
-                    '<span class="info">'+json.stream.viewers+' viewers</span></a>';
-                    document.getElementById("onlines").appendChild(div);
-
-                    // Save object for reordering
-                    online_channels[channel] = div;
+                    storage.onlines[channel] = json.stream;
                 }
-                // Else, meaning the stream is Offline
+                // Else, meaning the channel is offline  
                 else {
-                    var div = document.createElement("div");
-                    div.className = "offline";
-                    div.innerHTML = '<form name="remove_'+channel+'">'+
-                    '<button type="submit" id="delete_button">x</button></form>'+
-                    '<a href="http://www.twitch.tv/'+channel+'" class="link_block" target="_blank" />'+
-                    '<span class="name">'+channel+'</span></a>';
-                    document.getElementById("offlines").appendChild(div);
+                    storage.offlines.push(channel);
+                }    
 
-                    // Save object for reordering
-                    offline_channels[channel] = div;
-                }
-
-                // Add event on Delete buttons
-                document.forms["remove_"+channel].addEventListener("submit", function(evt){
-                    evt.preventDefault();
-                    if(confirm("Are you sure you want to delete "+channel+" ?")) {
-                        deleteChannel(channel);
+                if(refreshing) {
+                    fetched++;
+                    if(toFetch == fetched) {
+                        render();
+                        setBadge(String(Object.keys(storage.onlines).length));
                     }
-                });
-
-                // Refresh loading bar
-                channel_count++;
-                var new_width = channel_count*300/channel_nbr;
-                document.getElementById("loading").style.width = new_width+"px";
-                // If fully loaded ...
-                if (channel_count==channel_nbr) {
-                    // ... remove the loading bar
-                    document.getElementById("loading").style.display = "none";
-                    // ... update the icon badge for online channels
-                    chrome.browserAction.setBadgeBackgroundColor({color:[100,65,165,255]});
-                    chrome.browserAction.setBadgeText({text:online_channel.toString()});
-
-                    storage.channels.forEach(function(element){
-                        if(online_channels[element]) 
-                            document.getElementById('onlines').appendChild(online_channels[element]);
-                        else document.getElementById('offlines').appendChild(offline_channels[element]);
-                    });
-                }
+                }     
             }
 
-            else {
-                if(!error) {
-                    //alert("Error "+this.status+": There was an unknown error.");
-                    console.log("Error "+this.status+": There was an unknown error.");
-                    error = true;
-                }
-            }
+            else console.log("TwitchForChrome: ERROR "+this.status+" - There was an unknown error.");
+
+            saveStorage();
         }
     }
     xhr.send();
 }
 
-function run_query(evt) {
-    evt.preventDefault();
+/**
+ * Append all the online and offline channels.
+ */
+function render() {
+    // Render online streams
+    for (var channel in storage.onlines) {
+        div = document.createElement("div");
+        div.className = "online";
+        div.innerHTML = '<form name="remove_'+channel+'"><button type="submit">x</button></form>'+
+        '<a href="http://www.twitch.tv/'+channel+'" class="link_block" target="_blank" />'+
+        '<img src="'+storage.onlines[channel].channel.logo+'" width="50" height="50" />'+
+        '<span class="name">'+channel+'</span><br/>'+
+        '<span class="info">'+storage.onlines[channel].game+'</span><br/>'+
+        '<span class="info">'+storage.onlines[channel].viewers+' viewers</span></a>';
+        document.getElementById("onlines").appendChild(div);
 
-    var query = document.getElementById("add_channel").value;
-    document.getElementById("add_channel").value = '';
-
-    // Commands (/foobar)
-    if(query.substring(0, 1) == '/') {
-        query = query.substring(1);
-        query = query.split(" ");
-
-        switch(query[0]) {
-            case 'clear':
-                deleteChannel(localStorage);
-            break;
-            case 'delete':
-                if(localStorage[query[1]] != null) deleteChannel(localStorage[query[1]]);
-            break;
-            case 'export':
-                if(localStorage.length != 0) {
-                    var export_list = Array();
-                    for(var i in localStorage) export_list.push(localStorage[i]);
-                    window.prompt("Copy to clipboard: Ctrl+C, Enter", export_list);
-                }
-            break;
-            case 'help':
-                alert (
-                    "/clear -> Delete all the streams. \r\r"+
-                    "/delete username -> Delete a single channel. Replace 'channel' by its name. \r\r"+
-                    "/export -> Export the list of the saved channels. \r\r"+
-                    "@username -> Import a list of channels form a Twitch account. \r\r"+
-                    "To import a channel, just type its name."+
-                    "To import multiple channels, just paste all the names separated by commas."
-                );
-            break;
-        }
-    }
-    // Account import (@foobar)
-    else if(query.substring(0, 1) == '@') {
-        query = query.substring(1);
-        // Download JSON file of the stream
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "https://api.twitch.tv/kraken/users/"+query+"/follows/channels?on_site=1", true);
-
-        xhr.onreadystatechange = function() {
-            //If the download is finish, continue with the JSON file
-            if (xhr.readyState == 4) {
-                if (this.status==404 || this.status==422) {
-                    //alert("Error: "+this.status+" The channel "+query+" have not been found.");
-                    console.log("Error "+this.status+": The channel "+query+" have not been found.");
-                } else if(this.status == 0) {
-                    alert("Error "+this.status+": It seem you don't have an internet connection.");
-                    console.log("Error "+this.status+": It seem you don't have an internet connection.");
-                } else if(this.status == 200) {
-                    var json = JSON.parse(xhr.responseText);
-
-                    if(json._total>0) {
-                        var import_channels = Array();
-                        json.follows.forEach(function(element, index) {
-                            import_channels.push(element.channel.name);
-                        });
-
-                        addChannel(import_channels);
-                    }
-                } else {
-                    alert("Error "+this.status+": There was an unknown error.");
-                    console.log("Error "+this.status+": There was an unknown error.");
-                }
+        // Add event on Delete buttons
+        document.forms["remove_"+channel].addEventListener("submit", function(evt){
+            evt.preventDefault();
+            if(confirm("Are you sure you want to delete "+channel+" ?")) {
+                deleteChannels([channel]);
+                resetChannel(channel);
             }
-        }
-
-        xhr.send();
+        });
     }
-    // Import stream with complet url (http://www.twitch.tv/foobar)
-    else if(query.substring(0, 21) == 'http://www.twitch.tv/') {
-        query = query.substring(21);
-        addChannel(Array(query));
-    }
-    // Import stream with username (foobar)
-    else {
-        query = query.toLowerCase().replace(/\s/g, '');
-        var import_list = query.split(",");
-        addChannel(import_list);
-    }
-}
 
-function addChannel(new_channels) {
-    channel_count = 0;
-    channel_nbr = new_channels.length;
-    document.getElementById("loading").style.display = "block";
+    // Render offline streams
+    storage.offlines.forEach(function(element) {
+        div = document.createElement("div");
+        div.className = "offline";
+        div.innerHTML = '<form name="remove_'+element+'">'+
+        '<button type="submit" id="delete_button">x</button></form>'+
+        '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
+        '<span class="name">'+element+'</span></a>';
+        document.getElementById("offlines").appendChild(div);
 
-    new_channels.forEach(function(element){
-        if(!localStorage[element]) {
-            localStorage[element] = element;
-            storage.channels.push(element);
-            streamer(element);
-        } else channel_nbr--;
+        // Add event on Delete buttons
+        document.forms["remove_"+element].addEventListener("submit", function(evt){
+            evt.preventDefault();
+            if(confirm("Are you sure you want to delete "+element+" ?")) {
+                deleteChannels([element]);
+                resetChannel(element);
+            }
+        });
     });
+
 }
 
-function deleteChannel(old_channels) {
-    if(typeof old_channels == 'string' || old_channels instanceof String) {
-        var deleted_channel = document.forms["remove_"+old_channels].parentNode;
-        deleted_channel.parentNode.removeChild(deleted_channel);
-        delete localStorage[old_channels];
+function deleteRender(channel) {
+    if(channel == null) {
+        while(onlines.firstChild) onlines.removeChild(onlines.firstChild);
+        while(offlines.firstChild) offlines.removeChild(offlines.firstChild);
     }
-    else {
-        for(var i in old_channels) {
-            if(localStorage[i]) {
-                var deleted_channel = document.forms["remove_"+localStorage[i]].parentNode;
-                deleted_channel.parentNode.removeChild(deleted_channel);
-                delete localStorage[i];
-            }
-        }
-    }
-
-    var count = document.getElementById('onlines').getElementsByTagName('div').length;
-    chrome.browserAction.setBadgeBackgroundColor({color:[100,65,165,255]});
-    chrome.browserAction.setBadgeText({text:count.toString()});
 }
 
-function saveStorage() {
-    localStorage.twitchForChrome = JSON.stringify(storage);
-    console.log("Storage has been save.");
+/**
+ * Set the icon's badge info and color.
+ * @param {string} info - The information to show on the badge.
+ * @oaram {array} color - The color of the badge's background. Must be [R,G,B,Alpha]. Default is [100,65,165,255].
+ */
+function setBadge(info, color) {
+    if(typeof info == 'string') {
+        if(color==null) color = [100,65,165,255];
+        if(Array.isArray(color)) {
+            chrome.browserAction.setBadgeBackgroundColor({color:color});
+            chrome.browserAction.setBadgeText({text:info});
+        } else console.log("TwitchForChrome: ERROR - The second argument of [setBadge] must be an array.");
+    } else console.log("TwitchForChrome: ERROR - The first argument of [setBadge] must be a string.");
+}
+
+/**
+ * Refresh the list of stream, render the result and set the badge info.
+ */
+function refresh() {
+    toFetch = 0;
+    fetched = 0;
+    deleteRender();
+    storage.channels.forEach(function(element) {
+        getStream(element, true);
+        toFetch++;
+    });
 }
 
 // Launch the app when the HTML is loaded
 document.addEventListener('DOMContentLoaded', function () {
-    if(channel_nbr == 0) {
-        chrome.browserAction.setBadgeBackgroundColor({color:[100,65,165,255]});
-        chrome.browserAction.setBadgeText({text:"0"});
-    } else for (var value in channels) streamer(channels[value]);
-    document.forms["new_channel"].addEventListener("submit", run_query);
-    document.getElementById("add_channel").focus();
+    render();
+    setBadge(String(Object.keys(storage.onlines).length));
+    document.getElementById("refreshBtn").addEventListener("click", function() { refresh(); });
 });

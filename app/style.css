@@ -47,7 +47,13 @@ input
     color: white;
     margin: 5px 0 5px 10px;
     padding-left: 5px;
-    height: 25px; width: 91%;
+    height: 25px; width: 83%;
+}
+
+#refreshBtn
+{
+    vertical-align: -50%;
+    cursor: pointer;
 }
 
 /* REMOVE CHANNEL */
