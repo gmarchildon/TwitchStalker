@@ -72,12 +72,10 @@ function resetChannel(channel) {
 }
 
 function wipeStorage() {
-    storage = {
-        "accountLink":"",
-        "channels":[],
-        "onlines":{},
-        "offlines":[]
-    };
+    storage.accountLink = "";
+    storage.channels = [];
+    storage.onlines = {};
+    storage.offlines = [];
 }
 
 /**
@@ -151,8 +149,10 @@ function render() {
         document.forms["remove_"+channel].addEventListener("submit", function(evt){
             evt.preventDefault();
             if(confirm("Are you sure you want to delete "+channel+" ?")) {
-                deleteChannels([channel]);
                 resetChannel(channel);
+                deleteRender(channel);
+                deleteChannels([channel]);
+                saveStorage();
             }
         });
     }
@@ -171,18 +171,27 @@ function render() {
         document.forms["remove_"+element].addEventListener("submit", function(evt){
             evt.preventDefault();
             if(confirm("Are you sure you want to delete "+element+" ?")) {
-                deleteChannels([element]);
                 resetChannel(element);
+                deleteRender(element);
+                deleteChannels([element]);
+                saveStorage();
             }
         });
     });
 
 }
 
+/**
+ * Delete the render of a channel if specifed. If not, wipe all rendered channels.
+ * @param {string} channel - Channel to remove.
+ */
 function deleteRender(channel) {
     if(channel == null) {
         while(onlines.firstChild) onlines.removeChild(onlines.firstChild);
         while(offlines.firstChild) offlines.removeChild(offlines.firstChild);
+    } else if(typeof channel == 'string') {
+        channelRender = document.forms["remove_"+channel].parentNode;
+        channelRender.parentNode.removeChild(channelRender);
     }
 }
 
