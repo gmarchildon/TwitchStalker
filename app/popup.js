@@ -133,6 +133,7 @@ function getStream(channel, refreshing) {
 
             xhr.onerror = function(error) {
               error(error);
+              refreshCount--;
             };
         }
     } catch(e) {
@@ -153,6 +154,7 @@ function getAccount(account) {
             if(xhr.responseText) {
                 var json = JSON.parse(xhr.responseText);
                 var total = json._total;
+                var procced = 0;
 
                 if(total>0) {
                     var xhrTemp = new XMLHttpRequest();
@@ -165,13 +167,22 @@ function getAccount(account) {
 
                                 var importChannels = Array();
                                 json.follows.forEach(function(element, index) {
-                                    importChannels.push(element.channel.name);
+                                    if(storage.channels.indexOf(element.channel.name) == -1) {
+                                        importChannels.push(element.channel.name);
+                                    }
+                                    procced++;
                                 });
                                 addChannels(importChannels);
+
+                                if(procced >= total) {
+                                    saveStorage();
+                                    refresh(importChannels);
+                                }
                             }
 
                             xhrTemp.onerror = function(error) {
                               error(error);
+                              procced++;
                             };
                         }
                     } catch(e) {
@@ -292,11 +303,13 @@ function setBadge(info, color) {
 
 /**
  * Refresh the list of stream, render the result and set the badge info.
+ * @param {array} channels - List of channel to refresh. If not define, it will refresh all the channels in storage.
  */
-function refresh() {
+function refresh(channels) {
     refreshCount = 0;
-    deleteRender();
+    var target = channels || storage.channels;
     storage.channels.forEach(function(element) {
+        deleteRender(element);
         getStream(element, true);
         refreshCount++;
     });
@@ -317,6 +330,8 @@ function runQuery(evt) {
             case 'clear':
                 wipeStorage();
                 saveStorage();
+                deleteRender();
+                render();
             break;
             case 'delete':
                 if(storage.channels.indexOf(query[1]) != -1) {
@@ -347,7 +362,6 @@ function runQuery(evt) {
     else if(query.substring(0, 1) == '@') {
         query = query.substring(1);
         getAccount(query);
-        saveStorage();
     }
     // Import stream with complet url (http://www.twitch.tv/foobar)
     else if(query.substring(0, 21) == 'http://www.twitch.tv/') {
