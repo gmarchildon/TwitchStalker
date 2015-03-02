@@ -9,7 +9,6 @@
 
 var refreshCount;
 var storage;
-var xhr = new XMLHttpRequest();
 
 // If first time, create localStorage object
 if(!localStorage.twitchStalker) {
@@ -102,6 +101,7 @@ function getStream(channel, refreshing) {
     // Remove the channel from the onlines or offlines list of storage
     resetChannel(channel);
 
+    var xhr = new XMLHttpRequest();
     try {
         xhr.onreadystatechange = function() {
             // If the connection is not successful, abort
@@ -124,12 +124,11 @@ function getStream(channel, refreshing) {
                 if(refreshing) {
                     refreshCount--;
                     if(refreshCount <= 0) {
+                        saveStorage();
                         render();
                         setBadge(String(Object.keys(storage.onlines).length));
                     }
                 }
-
-                saveStorage();
             }
 
             xhr.onerror = function(error) {
@@ -145,6 +144,7 @@ function getStream(channel, refreshing) {
 }
 
 function getAccount(account) {
+    var xhr = new XMLHttpRequest();
     try {
         xhr.onreadystatechange = function() {
             // If the connection is not successful, abort
