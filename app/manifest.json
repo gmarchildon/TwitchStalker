@@ -1,10 +1,10 @@
 {
     "manifest_version": 2,
 
-    "name": "Twitch for Chrome",
-    "short_name": "TwitCh",
-    "description": "Easy way to follow Twitch Channels",
-    "version": "1.3.1",
+    "name": "Twitch Stalker",
+    "short_name": "TwitchStalker",
+    "description": "Easy way to follow and stalk your favorite streamers",
+    "version": "1.4",
 
     "permissions": [
         "https://api.twitch.tv/",

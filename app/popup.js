@@ -7,29 +7,30 @@
 * You can found the source code here : github.com/je-suis-un-pixel/TwitchForChrome
 * */
 
-// Set a variable for make sure everything is ready for render
-var toFetch = 0;
-var fetched = 0;
+var refreshCount;
+var storage;
+var xhr = new XMLHttpRequest();
 
 // If first time, create localStorage object
-if(!localStorage.twitchForChrome) {
+if(!localStorage.twitchStalker) {
     wipeStorage();
     // Save the stream from legacy then wipe localStorage
-    for (var i in localStorage) {
-        if('i' != 'twitchForChrome') {
-            addChannels([i]);
-            delete(localStorage[i]);
+    for (var data in localStorage) {
+        if(data != 'twitchStalker') {
+            addChannels([data]);
+            delete(localStorage[data]);
         }
     }
     saveStorage();
-} else var storage = JSON.parse(localStorage.twitchForChrome);
+} else var storage = JSON.parse(localStorage.twitchStalker);
 
 /**
  * Save all the user data in localStorage in String.
  */
 function saveStorage() {
-    localStorage.twitchForChrome = JSON.stringify(storage);
-    console.log("TwitchForChrome: Storage has been save.");
+    localStorage.clear();
+    localStorage.setItem("twitchStalker", JSON.stringify(storage));
+    console.log("[Twitch Stalker] Storage has been save.");
 }
 
 /**
@@ -41,7 +42,7 @@ function saveStorage() {
         newChannels.forEach(function(element) {
             if(storage.channels.indexOf(element) == -1) storage.channels.push(element);
         });
-    } else console.log("TwitchForChrome: ERROR - The [addChannels] function require an array.");
+    } else error("The [addChannels] function require an array.");
  }
 
 
@@ -58,7 +59,7 @@ function saveStorage() {
                 resetChannel(element);
             }
         });
-    } else console.log("TwitchForChrome: ERROR - The [deleteChannels] function require an array.");
+    } else error("The [deleteChannels] function require an array.");
 }
 
 /**
@@ -71,12 +72,27 @@ function resetChannel(channel) {
     if(restChannelIndex != -1) storage.offlines.splice(restChannelIndex, 1);
 }
 
+/**
+ * Wipe the storage variable.
+ */
 function wipeStorage() {
-    storage.accountLink = "";
-    storage.channels = [];
-    storage.onlines = {};
-    storage.offlines = [];
+    storage = {
+        "accountLink":"",
+        "channels":[],
+        "onlines":{},
+        "offlines":[]
+    }
 }
+
+/*function sortData(data) {
+    var sorted = [];
+    Object.keys(data).sort(function(a,b){
+        return data[a].name < data[b].name ? -1 : 1
+    }).forEach(function(key){
+        sorted.push(data[key]);
+    });
+    return sorted;
+}*/
 
 /**
  * Get information of a channel from Twitch.
@@ -86,19 +102,12 @@ function getStream(channel, refreshing) {
     // Remove the channel from the onlines or offlines list of storage
     resetChannel(channel);
 
-    // Download JSON file of the stream
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", "https://api.twitch.tv/kraken/streams/"+channel, true);
-
-    xhr.onreadystatechange = function() {
-        // If the download is finish, continue with the JSON file
-        if (xhr.readyState == 4) {
-            if (this.status == 404) {
-                console.log("TwitchForChrome: ERROR "+this.status+" - The channel "+channel+" have not been found.");
-                deleteChannels([channel]);
-            } else if(this.status == 0) {
-                console.log("TwitchForChrome: ERROR "+this.status+" - It seem you don't have an internet connection.");
-            } else if(this.status == 200) {
+    try {
+        xhr.onreadystatechange = function() {
+            // If the connection is not successful, abort
+            if (xhr.readyState != 4) return;
+            
+            if(xhr.responseText) {
                 var json = JSON.parse(xhr.responseText);
 
                 // If the channel is Online
@@ -113,20 +122,92 @@ function getStream(channel, refreshing) {
                 }    
 
                 if(refreshing) {
-                    fetched++;
-                    if(toFetch == fetched) {
+                    refreshCount--;
+                    if(refreshCount <= 0) {
                         render();
                         setBadge(String(Object.keys(storage.onlines).length));
                     }
-                }     
+                }
+
+                saveStorage();
             }
 
-            else console.log("TwitchForChrome: ERROR "+this.status+" - There was an unknown error.");
-
-            saveStorage();
+            xhr.onerror = function(error) {
+              error(error);
+            };
         }
+    } catch(e) {
+        error("Could not connect to Twitch.tv.");
     }
-    xhr.send();
+    
+    xhr.open("GET", "https://api.twitch.tv/kraken/streams/"+channel, true);
+    xhr.send(null);
+}
+
+function getAccount(account) {
+    try {
+        xhr.onreadystatechange = function() {
+            // If the connection is not successful, abort
+            if (xhr.readyState != 4) return;
+            
+            if(xhr.responseText) {
+                var json = JSON.parse(xhr.responseText);
+                var total = json._total;
+
+                if(total>0) {
+                    var xhrTemp = new XMLHttpRequest();
+                    try {
+                        xhrTemp.onreadystatechange = function() {
+                            if (xhrTemp.readyState != 4) return;
+
+                            if(xhrTemp.responseText) {
+                                var json = JSON.parse(xhrTemp.responseText);
+
+                                var importChannels = Array();
+                                json.follows.forEach(function(element, index) {
+                                    importChannels.push(element.channel.name);
+                                });
+                                addChannels(importChannels);
+                            }
+
+                            xhrTemp.onerror = function(error) {
+                              error(error);
+                            };
+                        }
+                    } catch(e) {
+                        error("Could not connect to Twitch.tv.");
+                    }
+
+                    xhrTemp.open(
+                        "GET", 
+                        "https://api.twitch.tv/kraken/users/"+account+"/follows/channels?limit="+total,
+                        true
+                    );
+                    xhrTemp.send(null);
+                }
+            }
+
+            xhr.onerror = function(error) {
+              error(error);
+            };
+        }
+    } catch(e) {
+        error("Could not connect to Twitch.tv.");
+    }
+    xhr.open(
+        "GET", 
+        "https://api.twitch.tv/kraken/users/"+account+"/follows/channels?offset=9999&limit=1",
+        true
+    );
+    xhr.send(null);
+}
+
+/**
+ * Throw a new error in console.
+ * @param {string} Error message
+ */
+function error(text) {
+    throw new Error("[Twitch Stalker] ERROR - "+text);
 }
 
 /**
@@ -178,7 +259,6 @@ function render() {
             }
         });
     });
-
 }
 
 /**
@@ -206,21 +286,80 @@ function setBadge(info, color) {
         if(Array.isArray(color)) {
             chrome.browserAction.setBadgeBackgroundColor({color:color});
             chrome.browserAction.setBadgeText({text:info});
-        } else console.log("TwitchForChrome: ERROR - The second argument of [setBadge] must be an array.");
-    } else console.log("TwitchForChrome: ERROR - The first argument of [setBadge] must be a string.");
+        } else error("The second argument of [setBadge] must be an array.");
+    } else error("The first argument of [setBadge] must be a string.");
 }
 
 /**
  * Refresh the list of stream, render the result and set the badge info.
  */
 function refresh() {
-    toFetch = 0;
-    fetched = 0;
+    refreshCount = 0;
     deleteRender();
     storage.channels.forEach(function(element) {
         getStream(element, true);
-        toFetch++;
+        refreshCount++;
     });
+}
+
+function runQuery(evt) {
+    evt.preventDefault();
+
+    var query = document.getElementById("add_channel").value;
+    document.getElementById("add_channel").value = '';
+
+    // Commands (/foobar)
+    if(query.substring(0, 1) == '/') {
+        query = query.substring(1);
+        query = query.split(" ");
+
+        switch(query[0]) {
+            case 'clear':
+                wipeStorage();
+                saveStorage();
+            break;
+            case 'delete':
+                if(storage.channels.indexOf(query[1]) != -1) {
+                    deleteChannels([query[1]]);
+                    saveStorage();
+                }
+            break;
+            case 'export':
+                if(storage.channels.length != 0) {
+                    var exportList = Array();
+                    for(var i in storage.channels) exportList.push(storage[i]);
+                    window.prompt("Copy to clipboard: Ctrl+C, Enter", exportList);
+                }
+            break;
+            case 'help':
+                alert (
+                    "/clear -> Delete all the streams. \r\r"+
+                    "/delete username -> Delete a single channel. Replace 'channel' by its name. \r\r"+
+                    "/export -> Export the list of the saved channels. \r\r"+
+                    "@username -> Import a list of channels form a Twitch account. \r\r"+
+                    "To import a channel, just type its name."+
+                    "To import multiple channels, just paste all the names separated by commas."
+                );
+            break;
+        }
+    }
+    // Account import (@foobar)
+    else if(query.substring(0, 1) == '@') {
+        query = query.substring(1);
+        getAccount(query);
+        saveStorage();
+    }
+    // Import stream with complet url (http://www.twitch.tv/foobar)
+    else if(query.substring(0, 21) == 'http://www.twitch.tv/') {
+        query = query.substring(21);
+        addChannels([query]);
+    }
+    // Import stream with username (foobar)
+    else {
+        query = query.toLowerCase().replace(/\s/g, '');
+        var importList = query.split(",");
+        addChannels(importList);
+    }
 }
 
 // Launch the app when the HTML is loaded
@@ -228,4 +367,6 @@ document.addEventListener('DOMContentLoaded', function () {
     render();
     setBadge(String(Object.keys(storage.onlines).length));
     document.getElementById("refreshBtn").addEventListener("click", function() { refresh(); });
+    document.forms["new_channel"].addEventListener("submit", runQuery);
+    document.getElementById("add_channel").focus();
 });
