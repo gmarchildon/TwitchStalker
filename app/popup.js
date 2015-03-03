@@ -176,7 +176,7 @@ function getAccount(account) {
 
                                 if(procced >= total) {
                                     saveStorage();
-                                    refresh(importChannels);
+                                    if(importChannels.length > 0) refresh(importChannels);
                                 }
                             }
 
@@ -280,7 +280,7 @@ function deleteRender(channel) {
     if(channel == null) {
         while(onlines.firstChild) onlines.removeChild(onlines.firstChild);
         while(offlines.firstChild) offlines.removeChild(offlines.firstChild);
-    } else if(typeof channel == 'string') {
+    } else if(typeof channel == 'string' && document.forms["remove_"+channel]) {
         channelRender = document.forms["remove_"+channel].parentNode;
         channelRender.parentNode.removeChild(channelRender);
     }
