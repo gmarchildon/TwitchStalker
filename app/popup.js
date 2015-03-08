@@ -21,7 +21,7 @@ if(!localStorage.twitchStalker) {
         }
     }
     saveStorage();
-} else var storage = JSON.parse(localStorage.twitchStalker);
+} else storage = JSON.parse(localStorage.twitchStalker);
 
 /**
  * Save all the user data in localStorage in String.
@@ -34,7 +34,7 @@ function saveStorage() {
 
 /**
  * Add a list of new channels to the user's list.
- * @param {array} newChannels - A list of channel's names.
+ * @param {Array} newChannels - A list of channel's names.
  */
  function addChannels(newChannels) {
     if(Array.isArray(newChannels)) {
@@ -47,12 +47,12 @@ function saveStorage() {
 
 /**
  * Delete a list of channels from the user's list.
- * @param {array} delChannels - A list of channel's names.
+ * @param {Array} delChannels - A list of channel's names.
  */
  function deleteChannels(delChannels) {
     if(Array.isArray(delChannels)) {
         delChannels.forEach(function(element) {
-            channelIndex = storage.channels.indexOf(element);
+            var channelIndex = storage.channels.indexOf(element);
             if(channelIndex != -1) {
                 storage.channels.splice(channelIndex, 1);
                 resetChannel(element);
@@ -67,7 +67,7 @@ function saveStorage() {
  */
 function resetChannel(channel) {
     delete storage.onlines[channel];
-    restChannelIndex = storage.offlines.indexOf(channel);
+    var restChannelIndex = storage.offlines.indexOf(channel);
     if(restChannelIndex != -1) storage.offlines.splice(restChannelIndex, 1);
 }
 
@@ -96,11 +96,9 @@ function wipeStorage() {
 /**
  * Get information of a channel from Twitch.
  * @param {string} channel - The name of the channel to fetch.
+ * @param {boolean} refreshing - The name of the channel to fetch.
  */
 function getStream(channel, refreshing) {
-    // Remove the channel from the onlines or offlines list of storage
-    resetChannel(channel);
-
     var xhr = new XMLHttpRequest();
     try {
         xhr.onreadystatechange = function() {
@@ -109,6 +107,9 @@ function getStream(channel, refreshing) {
             
             if(xhr.responseText) {
                 var json = JSON.parse(xhr.responseText);
+
+                // Remove the channel from the onlines or offlines list of storage
+                resetChannel(channel);
 
                 // If the channel is Online
                 if (json.stream != null) {
@@ -154,7 +155,7 @@ function getAccount(account) {
             if(xhr.responseText) {
                 var json = JSON.parse(xhr.responseText);
                 var total = json._total;
-                var procced = 0;
+                var processed = 0;
 
                 if(total>0) {
                     var xhrTemp = new XMLHttpRequest();
@@ -165,16 +166,16 @@ function getAccount(account) {
                             if(xhrTemp.responseText) {
                                 var json = JSON.parse(xhrTemp.responseText);
 
-                                var importChannels = Array();
-                                json.follows.forEach(function(element, index) {
+                                var importChannels = [];
+                                json.follows.forEach(function(element) {
                                     if(storage.channels.indexOf(element.channel.name) == -1) {
                                         importChannels.push(element.channel.name);
                                     }
-                                    procced++;
+                                    processed++;
                                 });
                                 addChannels(importChannels);
 
-                                if(procced >= total) {
+                                if(processed >= total) {
                                     saveStorage();
                                     refresh(importChannels);
                                 }
@@ -182,7 +183,7 @@ function getAccount(account) {
 
                             xhrTemp.onerror = function(error) {
                               error(error);
-                              procced++;
+                              processed++;
                             };
                         }
                     } catch(e) {
@@ -215,7 +216,7 @@ function getAccount(account) {
 
 /**
  * Throw a new error in console.
- * @param {string} Error message
+ * @param {string} text Error message
  */
 function error(text) {
     throw new Error("[Twitch Stalker] ERROR - "+text);
@@ -227,7 +228,7 @@ function error(text) {
 function render() {
     // Render online streams
     for (var channel in storage.onlines) {
-        div = document.createElement("div");
+        var div = document.createElement("div");
         div.className = "online";
         div.innerHTML = '<form name="remove_'+channel+'"><button type="submit">x</button></form>'+
         '<a href="http://www.twitch.tv/'+channel+'" class="link_block" target="_blank" />'+
@@ -273,15 +274,15 @@ function render() {
 }
 
 /**
- * Delete the render of a channel if specifed. If not, wipe all rendered channels.
- * @param {string} channel - Channel to remove.
+ * Delete the render of a channel if specified. If not, wipe all rendered channels.
+ * @param {string} [channel] - Channel to remove.
  */
 function deleteRender(channel) {
     if(channel == null) {
         while(onlines.firstChild) onlines.removeChild(onlines.firstChild);
         while(offlines.firstChild) offlines.removeChild(offlines.firstChild);
-    } else if(typeof channel == 'string') {
-        channelRender = document.forms["remove_"+channel].parentNode;
+    } else if(typeof channel == 'string' && document.forms["remove_"+channel]) {
+        var channelRender = document.forms["remove_"+channel].parentNode;
         channelRender.parentNode.removeChild(channelRender);
     }
 }
@@ -289,7 +290,7 @@ function deleteRender(channel) {
 /**
  * Set the icon's badge info and color.
  * @param {string} info - The information to show on the badge.
- * @oaram {array} color - The color of the badge's background. Must be [R,G,B,Alpha]. Default is [100,65,165,255].
+ * @param {Array} [color] - The color of the badge's background. Must be [R,G,B,Alpha]. Default is [100,65,165,255].
  */
 function setBadge(info, color) {
     if(typeof info == 'string') {
@@ -303,7 +304,7 @@ function setBadge(info, color) {
 
 /**
  * Refresh the list of stream, render the result and set the badge info.
- * @param {array} channels - List of channel to refresh. If not define, it will refresh all the channels in storage.
+ * @param {Array} [channels] - List of channel to refresh. If not define, it will refresh all the channels in storage.
  */
 function refresh(channels) {
     refreshCount = 0;
@@ -341,7 +342,7 @@ function runQuery(evt) {
             break;
             case 'export':
                 if(storage.channels.length != 0) {
-                    var exportList = Array();
+                    var exportList = [];
                     for(var i in storage.channels) exportList.push(storage[i]);
                     window.prompt("Copy to clipboard: Ctrl+C, Enter", exportList);
                 }
