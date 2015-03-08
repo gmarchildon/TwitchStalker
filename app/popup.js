@@ -177,7 +177,7 @@ function getAccount(account) {
 
                                 if(processed >= total) {
                                     saveStorage();
-                                    refresh(importChannels);
+                                    if(importChannels.length > 0) refresh(importChannels);
                                 }
                             }
 
