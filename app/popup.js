@@ -4,7 +4,7 @@
 *
 * You can follow me on Twitter here : @jesuisunpixel
 * Or you can visit my website here : www.jesuisunpixel.com
-* You can found the source code here : github.com/je-suis-un-pixel/TwitchForChrome
+* You can found the source code here : github.com/je-suis-un-pixel/TwitchStalker
 * */
 
 var refreshCount;
@@ -290,7 +290,7 @@ function deleteRender(channel) {
 /**
  * Set the icon's badge info and color.
  * @param {string} info - The information to show on the badge.
- * @param {Array} [color] - The color of the badge's background. Must be [R,G,B,Alpha]. Default is [100,65,165,255].
+ * @param {Array} [color=[100,65,165,255]] - The color of the badge's background. Must be [R,G,B,Alpha].
  */
 function setBadge(info, color) {
     if(typeof info == 'string') {
