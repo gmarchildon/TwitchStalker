@@ -7,8 +7,7 @@
 * You can found the source code here : github.com/je-suis-un-pixel/TwitchStalker
 * */
 
-var refreshCount;
-var storage;
+var storage, refreshCount;
 
 // If first time, create localStorage object
 if(!localStorage.twitchStalker) {
@@ -29,7 +28,7 @@ if(!localStorage.twitchStalker) {
 function saveStorage() {
     localStorage.clear();
     localStorage.setItem("twitchStalker", JSON.stringify(storage));
-    console.log("[Twitch Stalker] Storage has been save.");
+    log("Storage has been save.");
 }
 
 /**
@@ -39,7 +38,11 @@ function saveStorage() {
  function addChannels(newChannels) {
     if(Array.isArray(newChannels)) {
         newChannels.forEach(function(element) {
-            if(storage.channels.indexOf(element) == -1) storage.channels.push(element);
+            if(storage.channels.indexOf(element) == -1) {
+                storage.channels.push(element);
+                log(element+" has been added");
+            }
+            else error(element+" is already in your list");
         });
     } else error("The [addChannels] function require an array.");
  }
@@ -56,7 +59,8 @@ function saveStorage() {
             if(channelIndex != -1) {
                 storage.channels.splice(channelIndex, 1);
                 resetChannel(element);
-            }
+                log(element+" has been deleted");
+            } else error(element+" is not in your list and can not be deleted");
         });
     } else error("The [deleteChannels] function require an array.");
 }
@@ -96,7 +100,7 @@ function wipeStorage() {
 /**
  * Get information of a channel from Twitch.
  * @param {string} channel - The name of the channel to fetch.
- * @param {boolean} refreshing - The name of the channel to fetch.
+ * @param {boolean} [refreshing] - Will render the list when refreshCount is at 0 if true.
  */
 function getStream(channel, refreshing) {
     var xhr = new XMLHttpRequest();
@@ -124,9 +128,10 @@ function getStream(channel, refreshing) {
 
                 if(refreshing) {
                     refreshCount--;
+                    deleteRender(channel);
+                    render([channel]);
                     if(refreshCount <= 0) {
                         saveStorage();
-                        render();
                         setBadge(String(Object.keys(storage.onlines).length));
                     }
                 }
@@ -145,6 +150,10 @@ function getStream(channel, refreshing) {
     xhr.send(null);
 }
 
+/**
+ * Get all the streams an account is following.
+ * @param {Array} account The name of the account.
+ */
 function getAccount(account) {
     var xhr = new XMLHttpRequest();
     try {
@@ -215,61 +224,70 @@ function getAccount(account) {
 }
 
 /**
- * Throw a new error in console.
- * @param {string} text Error message
+ * Throw a new error in console with a prefix.
+ * @param {string} text Error message to write in console
  */
 function error(text) {
     throw new Error("[Twitch Stalker] ERROR - "+text);
 }
 
 /**
- * Append all the online and offline channels.
+ * Write a message in console with a prefix.
+ * @param {string} text Message to write in console
  */
-function render() {
-    // Render online streams
-    for (var channel in storage.onlines) {
-        var div = document.createElement("div");
-        div.className = "online";
-        div.innerHTML = '<form name="remove_'+channel+'"><button type="submit">x</button></form>'+
-        '<a href="http://www.twitch.tv/'+channel+'" class="link_block" target="_blank" />'+
-        '<img src="'+storage.onlines[channel].channel.logo+'" width="50" height="50" />'+
-        '<span class="name">'+channel+'</span><br/>'+
-        '<span class="info">'+storage.onlines[channel].game+'</span><br/>'+
-        '<span class="info">'+storage.onlines[channel].viewers+' viewers</span></a>';
-        document.getElementById("onlines").appendChild(div);
+function log(text) {
+    console.log("[Twitch Stalker] "+text);
+}
 
-        // Add event on Delete buttons
-        document.forms["remove_"+channel].addEventListener("submit", function(evt){
-            evt.preventDefault();
-            if(confirm("Are you sure you want to delete "+channel+" ?")) {
-                resetChannel(channel);
-                deleteRender(channel);
-                deleteChannels([channel]);
-                saveStorage();
-            }
-        });
-    }
+/**
+ * Append all the online and offline channels.
+ * @param {Array} [channels] - A list of channel's names.
+ */
+function render(channels) {
+    channels = channels || storage.channels;
 
-    // Render offline streams
-    storage.offlines.forEach(function(element) {
-        div = document.createElement("div");
-        div.className = "offline";
-        div.innerHTML = '<form name="remove_'+element+'">'+
-        '<button type="submit" id="delete_button">x</button></form>'+
-        '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
-        '<span class="name">'+element+'</span></a>';
-        document.getElementById("offlines").appendChild(div);
+    channels.forEach(function(element) {
+        if(storage.offlines.indexOf(element) != -1) {
+            div = document.createElement("div");
+            div.className = "offline";
+            div.innerHTML = '<form name="remove_'+element+'">'+
+            '<button type="submit" id="delete_button">x</button></form>'+
+            '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
+            '<span class="name">'+element+'</span></a>';
+            document.getElementById("offlines").appendChild(div);
 
-        // Add event on Delete buttons
-        document.forms["remove_"+element].addEventListener("submit", function(evt){
-            evt.preventDefault();
-            if(confirm("Are you sure you want to delete "+element+" ?")) {
-                resetChannel(element);
-                deleteRender(element);
-                deleteChannels([element]);
-                saveStorage();
-            }
-        });
+            // Add event on Delete buttons
+            document.forms["remove_"+element].addEventListener("submit", function(evt){
+                evt.preventDefault();
+                if(confirm("Are you sure you want to delete "+element+" ?")) {
+                    resetChannel(element);
+                    deleteRender(element);
+                    deleteChannels([element]);
+                    saveStorage();
+                }
+            });
+        } else {
+            var div = document.createElement("div");
+            div.className = "online";
+            div.innerHTML = '<form name="remove_'+element+'"><button type="submit">x</button></form>'+
+            '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
+            '<img src="'+storage.onlines[element].channel.logo+'" width="50" height="50" />'+
+            '<span class="name">'+element+'</span><br/>'+
+            '<span class="info">'+storage.onlines[element].game+'</span><br/>'+
+            '<span class="info">'+storage.onlines[element].viewers+' viewers</span></a>';
+            document.getElementById("onlines").appendChild(div);
+
+            // Add event on Delete buttons
+            document.forms["remove_"+element].addEventListener("submit", function(evt){
+                evt.preventDefault();
+                if(confirm("Are you sure you want to delete "+element+" ?")) {
+                    resetChannel(element);
+                    deleteRender(element);
+                    deleteChannels([element]);
+                    saveStorage();
+                }
+            });
+        }
     });
 }
 
@@ -279,8 +297,11 @@ function render() {
  */
 function deleteRender(channel) {
     if(channel == null) {
-        while(onlines.firstChild) onlines.removeChild(onlines.firstChild);
-        while(offlines.firstChild) offlines.removeChild(offlines.firstChild);
+        while(document.getElementById("onlines").firstChild)
+            document.getElementById("onlines").removeChild(document.getElementById("onlines").firstChild);
+        while(document.getElementById("offlines").firstChild)
+            document.getElementById("offlines").removeChild(document.getElementById("offlines").firstChild);
+        log("Render deleted");
     } else if(typeof channel == 'string' && document.forms["remove_"+channel]) {
         var channelRender = document.forms["remove_"+channel].parentNode;
         channelRender.parentNode.removeChild(channelRender);
@@ -298,6 +319,7 @@ function setBadge(info, color) {
         if(Array.isArray(color)) {
             chrome.browserAction.setBadgeBackgroundColor({color:color});
             chrome.browserAction.setBadgeText({text:info});
+            log("The icon has been changed");
         } else error("The second argument of [setBadge] must be an array.");
     } else error("The first argument of [setBadge] must be a string.");
 }
@@ -307,20 +329,25 @@ function setBadge(info, color) {
  * @param {Array} [channels] - List of channel to refresh. If not define, it will refresh all the channels in storage.
  */
 function refresh(channels) {
+    channels = channels || storage.channels;
     refreshCount = 0;
-    var target = channels || storage.channels;
-    storage.channels.forEach(function(element) {
-        deleteRender(element);
+    channels.forEach(function(element) {
         getStream(element, true);
         refreshCount++;
     });
+    log("List of channel refreshed");
 }
 
+/**
+ * Execute a command from the client.
+ * @param evt
+ */
 function runQuery(evt) {
     evt.preventDefault();
 
     var query = document.getElementById("add_channel").value;
     document.getElementById("add_channel").value = '';
+    log("Run query : "+query);
 
     // Commands (/foobar)
     if(query.substring(0, 1) == '/') {
@@ -342,9 +369,7 @@ function runQuery(evt) {
             break;
             case 'export':
                 if(storage.channels.length != 0) {
-                    var exportList = [];
-                    for(var i in storage.channels) exportList.push(storage[i]);
-                    window.prompt("Copy to clipboard: Ctrl+C, Enter", exportList);
+                    window.prompt("Copy to clipboard: Ctrl+C, Enter", storage.channels);
                 }
             break;
             case 'help':
@@ -353,7 +378,7 @@ function runQuery(evt) {
                     "/delete username -> Delete a single channel. Replace 'channel' by its name. \r\r"+
                     "/export -> Export the list of the saved channels. \r\r"+
                     "@username -> Import a list of channels form a Twitch account. \r\r"+
-                    "To import a channel, just type its name."+
+                    "To import a channel, just type its name. "+
                     "To import multiple channels, just paste all the names separated by commas."
                 );
             break;
@@ -363,17 +388,25 @@ function runQuery(evt) {
     else if(query.substring(0, 1) == '@') {
         query = query.substring(1);
         getAccount(query);
+        saveStorage();
     }
     // Import stream with complet url (http://www.twitch.tv/foobar)
-    else if(query.substring(0, 21) == 'http://www.twitch.tv/') {
+    else if(query.substring(0, 21) == 'http://www.twitch.tv/' || query.substring(0, 14) == 'www.twitch.tv/') {
         query = query.substring(21);
         addChannels([query]);
+        saveStorage();
     }
     // Import stream with username (foobar)
     else {
         query = query.toLowerCase().replace(/\s/g, '');
         var importList = query.split(",");
         addChannels(importList);
+        refreshCount = 0;
+        importList.forEach(function(element) {
+            getStream(element, true);
+            refreshCount++;
+        });
+        saveStorage();
     }
 }
 
