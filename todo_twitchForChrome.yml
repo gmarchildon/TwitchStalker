@@ -1,8 +1,0 @@
-## Twitch for Chrome ##
-
-- Account linking
-    - Ask if the user want to link the account to the extension when importing
-    - Link save the name in local for refresh
-    - If an account is already linked, ask if he want to replace it
-- Notifications
-    - When a channel comes live, show a chrome notification
