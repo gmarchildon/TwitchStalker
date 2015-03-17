@@ -7,7 +7,7 @@
 * You can found the source code here : github.com/je-suis-un-pixel/TwitchStalker
 * */
 
-var storage, refreshCount;
+var storage;
 
 // If first time, create localStorage object
 if(!localStorage.twitchStalker) {
@@ -100,9 +100,15 @@ function wipeStorage() {
 /**
  * Get information of a channel from Twitch.
  * @param {string} channel - The name of the channel to fetch.
- * @param {boolean} [refreshing] - Will render the list when refreshCount is at 0 if true.
+ * @param {function} [onSuccess] - Callback executed on success.
+ * @param {function} [onError] - Callback executed on error.
+ *
+ * @callback onSuccess
+ * @param {string} channel - The name of the channel to return
+ *
+ * @callback onError
  */
-function getStream(channel, refreshing) {
+function getStream(channel, onSuccess, onError) {
     var xhr = new XMLHttpRequest();
     try {
         xhr.onreadystatechange = function() {
@@ -122,19 +128,8 @@ function getStream(channel, refreshing) {
                     storage.onlines[channel] = json.stream;
                 }
                 // Else, meaning the channel is offline  
-                else {
-                    storage.offlines.push(channel);
-                }    
-
-                if(refreshing) {
-                    refreshCount--;
-                    deleteRender(channel);
-                    render([channel]);
-                    if(refreshCount <= 0) {
-                        saveStorage();
-                        setBadge(String(Object.keys(storage.onlines).length));
-                    }
-                }
+                else storage.offlines.push(channel);
+                if(onSuccess) onSuccess(channel);
             }
 
             xhr.onerror = function(error) {
@@ -144,6 +139,7 @@ function getStream(channel, refreshing) {
         }
     } catch(e) {
         error("Could not connect to Twitch.tv.");
+        if(onError) onError();
     }
     
     xhr.open("GET", "https://api.twitch.tv/kraken/streams/"+channel, true);
@@ -255,17 +251,6 @@ function render(channels) {
             '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
             '<span class="name">'+element+'</span></a>';
             document.getElementById("offlines").appendChild(div);
-
-            // Add event on Delete buttons
-            document.forms["remove_"+element].addEventListener("submit", function(evt){
-                evt.preventDefault();
-                if(confirm("Are you sure you want to delete "+element+" ?")) {
-                    resetChannel(element);
-                    deleteRender(element);
-                    deleteChannels([element]);
-                    saveStorage();
-                }
-            });
         } else {
             var div = document.createElement("div");
             div.className = "online";
@@ -276,18 +261,19 @@ function render(channels) {
             '<span class="info">'+storage.onlines[element].game+'</span><br/>'+
             '<span class="info">'+storage.onlines[element].viewers+' viewers</span></a>';
             document.getElementById("onlines").appendChild(div);
-
-            // Add event on Delete buttons
-            document.forms["remove_"+element].addEventListener("submit", function(evt){
-                evt.preventDefault();
-                if(confirm("Are you sure you want to delete "+element+" ?")) {
-                    resetChannel(element);
-                    deleteRender(element);
-                    deleteChannels([element]);
-                    saveStorage();
-                }
-            });
         }
+
+        // Add event on Delete buttons
+        document.forms["remove_"+element].addEventListener("submit", function(evt){
+            evt.preventDefault();
+            if(confirm("Are you sure you want to delete "+element+" ?")) {
+                resetChannel(element);
+                deleteRender(element);
+                deleteChannels([element]);
+                saveStorage();
+                updateBadge();
+            }
+        });
     });
 }
 
@@ -325,15 +311,30 @@ function setBadge(info, color) {
 }
 
 /**
+ * Set the badge text to the number of online streams
+ */
+function updateBadge() {
+    setBadge(String(Object.keys(storage.onlines).length));
+}
+
+/**
  * Refresh the list of stream, render the result and set the badge info.
  * @param {Array} [channels] - List of channel to refresh. If not define, it will refresh all the channels in storage.
  */
 function refresh(channels) {
     channels = channels || storage.channels;
-    refreshCount = 0;
+    var refreshCount = 0;
     channels.forEach(function(element) {
-        getStream(element, true);
         refreshCount++;
+        getStream(element, function(channel) {
+            refreshCount--;
+            deleteRender(channel);
+            render([channel]);
+            if(refreshCount <= 0) {
+                saveStorage();
+                updateBadge();
+            }
+        }, function() {refreshCount--;});
     });
     log("List of channel refreshed");
 }
@@ -360,11 +361,13 @@ function runQuery(evt) {
                 saveStorage();
                 deleteRender();
                 render();
+                updateBadge();
             break;
             case 'delete':
                 if(storage.channels.indexOf(query[1]) != -1) {
                     deleteChannels([query[1]]);
                     saveStorage();
+                    updateBadge();
                 }
             break;
             case 'export':
@@ -389,22 +392,32 @@ function runQuery(evt) {
         query = query.substring(1);
         getAccount(query);
         saveStorage();
+        updateBadge();
     }
     // Import stream with complet url (http://www.twitch.tv/foobar)
     else if(query.substring(0, 21) == 'http://www.twitch.tv/' || query.substring(0, 14) == 'www.twitch.tv/') {
         query = query.substring(21);
         addChannels([query]);
         saveStorage();
+        updateBadge();
     }
     // Import stream with username (foobar)
     else {
         query = query.toLowerCase().replace(/\s/g, '');
         var importList = query.split(",");
         addChannels(importList);
-        refreshCount = 0;
+        var refreshCount = 0;
         importList.forEach(function(element) {
-            getStream(element, true);
             refreshCount++;
+            getStream(element, function(channel) {
+                deleteRender(channel);
+                render([channel]);
+                refreshCount--;
+                if(refreshCount <= 0) {
+                    saveStorage();
+                    updateBadge();
+                }
+            }, function() {refreshCount--;});
         });
         saveStorage();
     }
@@ -413,7 +426,7 @@ function runQuery(evt) {
 // Launch the app when the HTML is loaded
 document.addEventListener('DOMContentLoaded', function () {
     render();
-    setBadge(String(Object.keys(storage.onlines).length));
+    updateBadge();
     document.getElementById("refreshBtn").addEventListener("click", function() { refresh(); });
     document.forms["new_channel"].addEventListener("submit", runQuery);
     document.getElementById("add_channel").focus();
