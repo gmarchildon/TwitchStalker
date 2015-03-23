@@ -23,8 +23,9 @@ function init() {
                 saveStorage();
                 setBadge(String(Object.keys(storage.onlines).length));
 
-                chrome.alarms.create({periodInMinutes:1});
+                chrome.alarms.create('refresh',{periodInMinutes:1});
                 chrome.alarms.onAlarm.addListener(function() {
+                    storage = JSON.parse(localStorage.twitchStalker);
                     refresh();
                 });
             }
