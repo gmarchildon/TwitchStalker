@@ -318,6 +318,19 @@ function updateBadge() {
 }
 
 /**
+ * Update the loading bar
+ * @param {string} count - Number of channel processed
+ */
+function updateLoading(count) {
+    var new_width = count*300/storage.channels.length;
+    if(new_width == 300) document.getElementById("loading").style.display = "none";
+    else {
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("loading").style.width = new_width+"px";
+    }
+}
+
+/**
  * Refresh the list of stream, render the result and set the badge info.
  * @param {Array} [channels] - List of channel to refresh. If not define, it will refresh all the channels in storage.
  */
@@ -330,6 +343,7 @@ function refresh(channels) {
             refreshCount--;
             deleteRender(channel);
             render([channel]);
+            updateLoading(storage.channels.length-refreshCount);
             if(refreshCount <= 0) {
                 saveStorage();
                 updateBadge();
@@ -410,9 +424,10 @@ function runQuery(evt) {
         importList.forEach(function(element) {
             refreshCount++;
             getStream(element, function(channel) {
+                refreshCount--;
                 deleteRender(channel);
                 render([channel]);
-                refreshCount--;
+                updateLoading(storage.channels.length-refreshCount);
                 if(refreshCount <= 0) {
                     saveStorage();
                     updateBadge();
