@@ -26,16 +26,16 @@ function init() {
                 chrome.alarms.create({periodInMinutes:1});
                 chrome.alarms.onAlarm.addListener(function() {
                     refresh();
-                    /*chrome.notifications.create("test", {
-                        "type":"basic",
-                        "iconUrl":"icon128.png",
-                        "title":"title",
-                        "message":"message"
-                    }, function(){});*/
                 });
             }
         }, function() {refreshCount--;});
     });
+
+    chrome.notifications.onClicked.addListener(function(notificationId){
+        var channel = notificationId.split("_")[0];
+        window.open("http://www.twitch.tv/"+channel, '_blank');
+    });
+
     log("Background initialised");
 }
 
@@ -109,6 +109,9 @@ function resetChannel(channel) {
 function refresh(channels) {
     channels = channels || storage.channels;
     var refreshCount = 0;
+    var tempStorage = [];
+    for(var channel in storage.onlines) tempStorage.push(channel);
+
     channels.forEach(function(element) {
         refreshCount++;
         getStream(element, function(channel) {
@@ -116,6 +119,16 @@ function refresh(channels) {
             if(refreshCount <= 0) {
                 saveStorage();
                 setBadge(String(Object.keys(storage.onlines).length));
+            }
+
+            // Notification
+            if(channel in storage.onlines && tempStorage.indexOf(channel) == -1) {
+                chrome.notifications.create(channel+'_'+new Date().getTime(), {
+                    "type":"basic",
+                    "iconUrl":"icon128.png",
+                    "title":"Twitch Stalker",
+                    "message":channel+" is now online!"
+                }, function(){});
             }
         }, function() {refreshCount--;});
     });
