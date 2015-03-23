@@ -133,8 +133,8 @@ function getStream(channel, onSuccess, onError) {
             }
 
             xhr.onerror = function(error) {
-              error(error);
-              refreshCount--;
+                error(error);
+                if(onError) onError();
             };
         }
     } catch(e) {
