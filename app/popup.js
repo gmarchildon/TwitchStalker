@@ -97,6 +97,10 @@ function wipeStorage() {
     return sorted;
 }*/
 
+function htmlEntities(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 /**
  * Get information of a channel from Twitch.
  * @param {string} channel - The name of the channel to fetch.
@@ -253,10 +257,11 @@ function render(channels) {
             document.getElementById("offlines").appendChild(div);
         } else {
             var c = storage.onlines[element];
+            var title = htmlEntities(c.channel.status);
             var div = document.createElement("div");
             div.className = "online";
             div.innerHTML = '<form name="remove_'+element+'"><button type="submit">x</button></form>'+
-            '<a href="http://www.twitch.tv/'+element+'" title="'+c.channel.status+'" class="link_block" target="_blank" />'+
+            '<a href="http://www.twitch.tv/'+element+'" title="'+title+'" class="link_block" target="_blank" />'+
             '<img src="'+c.channel.logo+'" width="50" height="50" />'+
             '<span class="name">'+c.channel.display_name+'</span><br/>'+
             '<span class="info">'+c.game+'</span><br/>'+
