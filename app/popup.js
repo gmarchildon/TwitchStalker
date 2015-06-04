@@ -252,14 +252,16 @@ function render(channels) {
             '<span class="name">'+element+'</span></a>';
             document.getElementById("offlines").appendChild(div);
         } else {
+            var c = storage.onlines[element];
             var div = document.createElement("div");
             div.className = "online";
             div.innerHTML = '<form name="remove_'+element+'"><button type="submit">x</button></form>'+
-            '<a href="http://www.twitch.tv/'+element+'" class="link_block" target="_blank" />'+
-            '<img src="'+storage.onlines[element].channel.logo+'" width="50" height="50" />'+
-            '<span class="name">'+element+'</span><br/>'+
-            '<span class="info">'+storage.onlines[element].game+'</span><br/>'+
-            '<span class="info">'+storage.onlines[element].viewers+' viewers</span></a>';
+            '<a href="http://www.twitch.tv/'+element+'" title="'+c.channel.status+'" class="link_block" target="_blank" />'+
+            '<img src="'+c.channel.logo+'" width="50" height="50" />'+
+            '<span class="name">'+c.channel.display_name+'</span><br/>'+
+            '<span class="info">'+c.game+'</span><br/>'+
+            '<span class="info">'+c.channel.status+'</span><br/>'+
+            '<span class="info">'+c.viewers+' viewers</span></a>';
             document.getElementById("onlines").appendChild(div);
         }
 
