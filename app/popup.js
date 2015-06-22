@@ -12,13 +12,6 @@ var storage;
 // If first time, create localStorage object
 if(!localStorage.twitchStalker) {
     wipeStorage();
-    // Save the stream from legacy then wipe localStorage
-    for (var data in localStorage) {
-        if(data != 'twitchStalker') {
-            addChannels([data]);
-            delete(localStorage[data]);
-        }
-    }
     saveStorage();
 } else storage = JSON.parse(localStorage.twitchStalker);
 
